@@ -17,6 +17,14 @@ public class RotaPedidos {
 			@Override
 			public void configure() throws Exception {
 				from("file:pedidos?delay=5s&noop=true"). //pasta de origem, o noop é utilizado para que os arquivos não sejam apagados da pasta de origem
+				routeId("roda-pedidos").
+				multicast().
+					to("direct: soap").
+					to("direct: http");
+				
+				from("direct: http").
+				log("${body}").
+				//Após o split não existe mais a id do pedido no XML nem a do pagamento. Por isso, colocamos as primeiras duas chamadas do setProperty no início da rota:
 				setProperty("pedidoId", xpath("/pedido/id/text()")).
 				setProperty("clienteId", xpath("/pedido/pagamento/email-titular/text()")).
 				split().			//separa a mensagem por item
@@ -33,6 +41,13 @@ public class RotaPedidos {
 				// o ${header.CamelSplitIndex} foi utilizado para separar cada EBOOK em um json diferente.
 				to("http4://localhost:8080/webservices/ebook/item");	//pasta de destino
 			
+				from("direct: soap").		//direct é como uma subrota
+					routeId("roda-soap").
+					setBody(constant("<envelope>teste</envelope>")).				
+				to("mock: soap");
+		
+				
+				
 			}
 		});
 		
