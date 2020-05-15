@@ -23,7 +23,7 @@ public class RotaPedidos {
 					to("direct: http");
 				
 				from("direct: http").
-				log("${body}").
+			//	log("${body}").
 				//Após o split não existe mais a id do pedido no XML nem a do pagamento. Por isso, colocamos as primeiras duas chamadas do setProperty no início da rota:
 				setProperty("pedidoId", xpath("/pedido/id/text()")).
 				setProperty("clienteId", xpath("/pedido/pagamento/email-titular/text()")).
@@ -33,7 +33,7 @@ public class RotaPedidos {
 					xpath("/item/formato[text()='EBOOK']").
 				setProperty("ebookId", xpath("/item/livro/codigo/text()")).
 				marshal().xmljson().//transforma arquivo xml em json
-				log("${id} - ${body}").	//imprime o id e corpo das mensagens no console
+				//log("${id} - ${body}").	//imprime o id e corpo das mensagens no console
 				setHeader(Exchange.HTTP_METHOD, HttpMethods.GET).
 				setHeader(Exchange.HTTP_QUERY, simple("ebookId=${property.ebookId}&pedidoId=${property.pedidoId}&clienteId=${property.clienteId}")).
 				
@@ -43,8 +43,10 @@ public class RotaPedidos {
 			
 				from("direct: soap").		//direct é como uma subrota
 					routeId("roda-soap").
-					setBody(constant("<envelope>teste</envelope>")).				
-				to("mock: soap");
+					to("xslt:pedido-para-soap.xslt").
+					log("${body}").
+					setHeader(Exchange.CONTENT_TYPE , constant("text/xml")).
+				to("http4://localhost:8080/webservices/financeiro");
 		
 				
 				
